@@ -3,8 +3,17 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeluxeVip</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DeluxeVip | Cassino Online de Elite</title>
+    <meta name="description" content="A melhor experiência em jogos de cassino online. Slots, Crash Games e Cassino ao Vivo.">
+    <meta name="theme-color" content="#0d0e12">
+    
+    <!-- Open Graph (Facebook/WhatsApp) -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="DeluxeVip | Cassino Online de Elite">
+    <meta property="og:description" content="Ganhe bônus de cadastro e jogue os melhores slots agora.">
+    <meta property="og:image" content="https://picsum.photos/seed/deluxevip_meta/1200/630">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -15,6 +24,7 @@
             margin: 0;
             padding: 0;
             overflow-x: hidden;
+            -webkit-tap-highlight-color: transparent;
         }
         .gold-gradient {
             background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
@@ -87,6 +97,11 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        
+        /* Mobile safe area padding */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom);
+        }
     </style>
 <script type="importmap">
 {
@@ -100,7 +115,7 @@
 }
 </script>
 </head>
-<body>
+<body class="selection:bg-yellow-500 selection:text-black">
     <div id="root"></div>
 </body>
 </html>

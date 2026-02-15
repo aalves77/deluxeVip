@@ -1,5 +1,8 @@
 {
   "name": "DeluxeVip",
-  "description": "O cassino online de elite",
-  "requestFramePermissions": []
+  "description": "O cassino online de elite com tecnologia KKVIP",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
 }
