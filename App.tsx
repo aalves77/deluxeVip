@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
@@ -37,31 +37,36 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
+  // BASE DE DADOS GLOBAL: Carrega todos os usuários salvos no navegador
   const [allUsers, setAllUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('kkvip_all_users');
     if (saved) return JSON.parse(saved);
     return [{
-      username: 'aalves',
-      phone: '342343',
-      balance: 5000.00,
+      username: 'admin',
+      phone: '000000000',
+      balance: 1000.00,
       vipLevel: 10,
       totalDeposited: 1000000,
       betHistory: [],
       claimedVipRewards: [2, 3, 4, 5, 6, 7, 8, 9, 10],
       isLoggedIn: false,
       isAdmin: true,
-      password: '22',
+      password: 'admin',
       tournamentScore: 0
     }];
   });
 
+  // SESSÃO ATIVA: Carrega o usuário que estava logado
   const [user, setUser] = useState<User>(() => {
     const saved = localStorage.getItem('kkvip_user');
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...parsed, isLoggedIn: !!parsed.isLoggedIn };
+      // Busca os dados mais recentes na base global para garantir que o saldo esteja certo
+      const savedUsers = JSON.parse(localStorage.getItem('kkvip_all_users') || '[]');
+      const freshData = savedUsers.find((u: any) => u.username === parsed.username);
+      return freshData ? { ...freshData, isLoggedIn: !!parsed.isLoggedIn } : parsed;
     }
-    return allUsers[0];
+    return { ...allUsers[0], isLoggedIn: false };
   });
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -69,14 +74,24 @@ const App: React.FC = () => {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
+  // Efeito de persistência: Salva allUsers sempre que houver mudança
   useEffect(() => {
     localStorage.setItem('kkvip_all_users', JSON.stringify(allUsers));
   }, [allUsers]);
 
+  // Efeito de sincronização: Quando as ações do usuário logado mudam seus dados, atualiza a base global
   useEffect(() => {
-    if (user.username) {
+    if (user.username && user.isLoggedIn) {
       localStorage.setItem('kkvip_user', JSON.stringify(user));
-      setAllUsers(prev => prev.map(u => u.username === user.username ? user : u));
+      setAllUsers(prev => {
+        const index = prev.findIndex(u => u.username === user.username);
+        if (index !== -1) {
+          const newUsers = [...prev];
+          newUsers[index] = { ...user };
+          return newUsers;
+        }
+        return [...prev, user];
+      });
     }
   }, [user]);
 
@@ -106,35 +121,40 @@ const App: React.FC = () => {
   const handleToggleMaintenance = () => {
     const newState = !isMaintenance;
     setIsMaintenance(newState);
-    addLog('ADMIN', `Modo manutenção alterado para: ${newState ? 'ATIVADO' : 'DESATIVADO'}`);
+    addLog('ADMIN', `Modo manutenção: ${newState ? 'LIGADO' : 'DESLIGADO'}`);
   };
 
   const handleUpdateBonus = (val: number) => {
     setRegistrationBonus(val);
-    addLog('ADMIN', `Bônus de cadastro alterado para R$ ${val.toFixed(2)}`);
+    localStorage.setItem('kkvip_reg_bonus', String(val));
+    addLog('ADMIN', `Bônus alterado para R$ ${val.toFixed(2)}`);
   };
 
   const handleUpdateGames = (updatedGames: Game[]) => {
-    const diff = updatedGames.find((g, i) => JSON.stringify(g) !== JSON.stringify(games[i]));
-    if (diff) {
-      addLog('GAME', `Jogo "${diff.name}" atualizado`);
-    }
     setGames(updatedGames);
+    addLog('ADMIN', `Configurações de jogos atualizadas`);
   };
 
   const handleLogin = (newUser: User, isNewRegistration: boolean = false) => {
     if (isNewRegistration) {
-      setAllUsers(prev => [...prev, newUser]);
-      addLog('USER', `Novo usuário registrado: ${newUser.username}`, newUser.username);
+      // Inserção atômica na base de dados global
+      setAllUsers(prev => {
+        const updated = [...prev, newUser];
+        localStorage.setItem('kkvip_all_users', JSON.stringify(updated));
+        return updated;
+      });
+      addLog('USER', `Novo registro efetuado`, newUser.username);
     }
+    
     setUser({ ...newUser, isLoggedIn: true });
     setIsAuthOpen(false);
-    addLog('USER', `Usuário logado no sistema`, newUser.username);
+    addLog('USER', `Sessão iniciada`, newUser.username);
   };
 
   const handleLogout = () => {
-    addLog('USER', `Usuário saiu do sistema`);
+    addLog('USER', `Sessão encerrada`);
     setUser(prev => ({ ...prev, isLoggedIn: false }));
+    localStorage.removeItem('kkvip_user');
   };
 
   const updateUser = (updates: Partial<User>) => {
@@ -145,10 +165,8 @@ const App: React.FC = () => {
     setAllUsers(prev => prev.map(u => {
       if (u.username === targetUsername) {
         const newStatus = !u.isAdmin;
-        addLog('ADMIN', `${newStatus ? 'Promoveu' : 'Removeu'} privilégios de Admin do usuário ${targetUsername}`);
-        if (user.username === targetUsername) {
-          setUser(curr => ({ ...curr, isAdmin: newStatus }));
-        }
+        addLog('ADMIN', `${newStatus ? 'Promoveu' : 'Rebaixou'} usuário ${targetUsername}`);
+        if (user.username === targetUsername) setUser(curr => ({ ...curr, isAdmin: newStatus }));
         return { ...u, isAdmin: newStatus };
       }
       return u;
@@ -159,10 +177,8 @@ const App: React.FC = () => {
     setAllUsers(prev => prev.map(u => {
       if (u.username === targetUsername) {
         const newBalance = u.balance + amount;
-        addLog('MONEY', `Admin ajustou saldo de ${targetUsername}: ${amount > 0 ? '+' : ''}R$ ${amount.toFixed(2)}`);
-        if (user.username === targetUsername) {
-          setUser(curr => ({ ...curr, balance: newBalance }));
-        }
+        addLog('MONEY', `Ajuste administrativo no saldo de ${targetUsername}: R$ ${amount.toFixed(2)}`);
+        if (user.username === targetUsername) setUser(curr => ({ ...curr, balance: newBalance }));
         return { ...u, balance: newBalance };
       }
       return u;
@@ -177,11 +193,11 @@ const App: React.FC = () => {
     }
     
     if (isDeposit) {
-      addLog('MONEY', `Depósito efetuado via PIX: +R$ ${amount.toFixed(2)}`);
+      addLog('MONEY', `Depósito recebido via PIX: +R$ ${amount.toFixed(2)}`);
     } else if (gameMetadata?.type === 'withdraw') {
-      addLog('MONEY', `Saque efetuado via PIX: -R$ ${Math.abs(amount).toFixed(2)}`);
+      addLog('MONEY', `Solicitação de saque via PIX: -R$ ${Math.abs(amount).toFixed(2)}`);
     } else if (gameMetadata) {
-      addLog('GAME', `${gameMetadata.type === 'win' ? 'Vitória' : 'Aposta'} no jogo ${gameMetadata.name}: R$ ${Math.abs(amount).toFixed(2)}`);
+      addLog('GAME', `${gameMetadata.type === 'win' ? 'Ganhou' : 'Apostou'} em ${gameMetadata.name}: R$ ${Math.abs(amount).toFixed(2)}`);
     }
 
     setUser(prev => {
@@ -189,9 +205,7 @@ const App: React.FC = () => {
       let tournamentPoints = 0;
 
       if (!isDeposit && gameMetadata?.type === 'win' && amount > 0) {
-        if (gameMetadata.category === 'SLOTS') {
-          tournamentPoints = Math.floor(amount * 10);
-        }
+        if (gameMetadata.category === 'SLOTS') tournamentPoints = Math.floor(amount * 10);
       }
       
       if (gameMetadata || isDeposit) {
@@ -216,18 +230,15 @@ const App: React.FC = () => {
   };
 
   const claimVipReward = (level: number, reward: number) => {
-    if (!user.isLoggedIn) {
-      setIsAuthOpen(true);
-      return;
-    }
-    addLog('MONEY', `Resgatou recompensa VIP Nível ${level}: +R$ ${reward.toFixed(2)}`);
+    if (!user.isLoggedIn) return setIsAuthOpen(true);
+    addLog('MONEY', `Resgatou prêmio VIP Nível ${level}: +R$ ${reward.toFixed(2)}`);
     setUser(prev => ({
       ...prev,
       balance: prev.balance + reward,
       claimedVipRewards: [...prev.claimedVipRewards, level],
       betHistory: [{
         id: Math.random().toString(36).substr(2, 9),
-        gameName: `Prêmio VIP Nível ${level}`,
+        gameName: `Prêmio VIP ${level}`,
         amount: reward,
         type: 'win' as const,
         timestamp: Date.now()
@@ -238,17 +249,7 @@ const App: React.FC = () => {
   const clearLogs = () => {
     setLogs([]);
     localStorage.removeItem('kkvip_logs');
-    addLog('SYSTEM', 'Histórico de logs foi zerado pelo administrador');
-  };
-
-  const openDeposit = () => {
-    if (!user.isLoggedIn) setIsAuthOpen(true);
-    else setIsDepositOpen(true);
-  };
-
-  const openWithdraw = () => {
-    if (!user.isLoggedIn) setIsAuthOpen(true);
-    else setIsWithdrawOpen(true);
+    addLog('SYSTEM', 'Limpeza completa dos logs de auditoria efetuada');
   };
 
   return (
@@ -256,14 +257,14 @@ const App: React.FC = () => {
       <div className="flex flex-col min-h-screen bg-[#0d0e12] text-white">
         {isMaintenance && user.isAdmin && (
           <div className="bg-red-600 text-white py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.3em] z-[60]">
-            Modo Manutenção Ativo - Somente Administradores têm acesso
+            Atenção: Modo Manutenção Ativado no Site
           </div>
         )}
 
         <Navbar 
           user={user} 
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
-          onDepositClick={openDeposit}
+          onDepositClick={() => setIsDepositOpen(true)}
           onAuthClick={() => setIsAuthOpen(true)}
         />
 
@@ -271,8 +272,8 @@ const App: React.FC = () => {
           <Sidebar 
             isOpen={isSidebarOpen} 
             user={user}
-            onWithdrawClick={openWithdraw} 
-            onDepositClick={openDeposit}
+            onWithdrawClick={() => setIsWithdrawOpen(true)} 
+            onDepositClick={() => setIsDepositOpen(true)}
             onLogout={handleLogout}
             onAuthClick={() => setIsAuthOpen(true)}
           />
@@ -283,9 +284,9 @@ const App: React.FC = () => {
                 <div className="w-24 h-24 bg-red-600/10 rounded-full flex items-center justify-center text-red-500 text-5xl mb-6 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
                   <i className="fa-solid fa-gears"></i>
                 </div>
-                <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-4">Estamos em <span className="text-red-500">Manutenção</span></h1>
+                <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-4">Em <span className="text-red-500">Manutenção</span></h1>
                 <p className="text-gray-500 max-w-md font-bold uppercase text-xs tracking-widest leading-relaxed">
-                  Estamos aprimorando nossos servidores para oferecer a melhor experiência de luxo. Voltaremos em breve!
+                  Estamos atualizando nossos jogos. Voltamos em breve!
                 </p>
               </div>
             ) : (
@@ -298,7 +299,7 @@ const App: React.FC = () => {
                 <Route path="/profile" element={user.isLoggedIn ? <ProfilePage user={user} onUpdateUser={updateUser} onLogout={handleLogout} /> : <Navigate to="/" />} />
                 <Route 
                   path="/admin" 
-                  element={user.isAdmin ? (
+                  element={user.isAdmin && user.isLoggedIn ? (
                     <AdminPanel 
                       games={games} 
                       onUpdateGames={handleUpdateGames} 
@@ -322,7 +323,7 @@ const App: React.FC = () => {
           </main>
         </div>
 
-        <BottomNav onDepositClick={openDeposit} onAuthClick={() => setIsAuthOpen(true)} isLoggedIn={user.isLoggedIn} />
+        <BottomNav onDepositClick={() => setIsDepositOpen(true)} onAuthClick={() => setIsAuthOpen(true)} isLoggedIn={user.isLoggedIn} />
         <CasinoAIChat />
 
         {isAuthOpen && (

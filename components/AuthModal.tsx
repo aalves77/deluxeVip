@@ -27,12 +27,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin, registrationBon
         alert('As senhas não coincidem!');
         return;
       }
-      if (cleanUsername.length < 4) {
-        alert('O nome de usuário deve ter pelo menos 4 caracteres.');
+      if (cleanUsername.length < 3) {
+        alert('Nome de usuário muito curto (mínimo 3 caracteres).');
         return;
       }
-      if (existingUsers.find(u => u.username.toLowerCase() === cleanUsername)) {
-        alert('Este nome de usuário já está em uso.');
+      // Verifica se o usuário já existe na lista global
+      if (existingUsers.some(u => u.username.toLowerCase() === cleanUsername)) {
+        alert('Este nome de usuário já está cadastrado. Tente fazer login!');
+        setMode('login');
         return;
       }
 
@@ -52,15 +54,17 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin, registrationBon
       
       onLogin(newUser, true);
     } else {
+      // Lógica de Login
       const foundUser = existingUsers.find(u => u.username.toLowerCase() === cleanUsername);
       if (foundUser) {
         if (foundUser.password === formData.password) {
           onLogin({ ...foundUser, isLoggedIn: true }, false);
         } else {
-          alert('Senha incorreta.');
+          alert('Senha incorreta!');
         }
       } else {
-        alert('Usuário não encontrado.');
+        alert('Usuário não encontrado. Crie uma conta primeiro!');
+        setMode('register');
       }
     }
   };
@@ -76,67 +80,79 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin, registrationBon
             <i className="fa-solid fa-xmark text-2xl"></i>
           </button>
 
-          <div className="w-20 h-20 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-3xl mx-auto flex items-center justify-center shadow-2xl mb-6 rotate-3">
-            <span className="text-black font-black text-4xl italic">D</span>
+          <div className="w-16 h-16 bg-gradient-to-br from-yellow-400 to-amber-600 rounded-2xl mx-auto flex items-center justify-center shadow-2xl mb-6">
+            <span className="text-black font-black text-3xl italic">D</span>
           </div>
 
           <h2 className="text-3xl font-black italic tracking-tighter uppercase mb-2">
-            {mode === 'register' ? 'Criar Conta' : 'Entrar na Conta'}
+            {mode === 'register' ? 'Criar Conta' : 'Acessar Conta'}
           </h2>
           <p className="text-gray-400 text-sm font-bold uppercase tracking-widest mb-8">
-            {mode === 'register' ? `Ganhe R$ ${registrationBonus.toFixed(2)} no DeluxeVip` : 'Bem-vindo de volta ao luxo'}
+            {mode === 'register' ? `Receba R$ ${registrationBonus.toFixed(2)} de bônus` : 'Bem-vindo de volta!'}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <i className="fa-solid fa-user absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
-              <input
-                required
-                type="text"
-                placeholder="Nome de Usuário"
-                className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
-                value={formData.username}
-                onChange={e => setFormData({...formData, username: e.target.value})}
-              />
+            <div className="relative text-left">
+              <label className="text-[10px] text-gray-500 font-black uppercase ml-4 mb-1 block">Usuário</label>
+              <div className="relative">
+                <i className="fa-solid fa-user absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                <input
+                  required
+                  type="text"
+                  placeholder="Seu username"
+                  className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                  value={formData.username}
+                  onChange={e => setFormData({...formData, username: e.target.value})}
+                />
+              </div>
             </div>
 
             {mode === 'register' && (
-              <div className="relative">
-                <i className="fa-solid fa-phone absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                <input
-                  required
-                  type="tel"
-                  placeholder="Telefone (DDD + Número)"
-                  className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
-                  value={formData.phone}
-                  onChange={e => setFormData({...formData, phone: e.target.value})}
-                />
+              <div className="relative text-left">
+                <label className="text-[10px] text-gray-500 font-black uppercase ml-4 mb-1 block">Telefone</label>
+                <div className="relative">
+                  <i className="fa-solid fa-phone absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                  <input
+                    required
+                    type="tel"
+                    placeholder="DDD + Número"
+                    className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                    value={formData.phone}
+                    onChange={e => setFormData({...formData, phone: e.target.value})}
+                  />
+                </div>
               </div>
             )}
 
-            <div className="relative">
-              <i className="fa-solid fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
-              <input
-                required
-                type="password"
-                placeholder="Senha"
-                className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
-                value={formData.password}
-                onChange={e => setFormData({...formData, password: e.target.value})}
-              />
-            </div>
-
-            {mode === 'register' && (
+            <div className="relative text-left">
+              <label className="text-[10px] text-gray-500 font-black uppercase ml-4 mb-1 block">Senha</label>
               <div className="relative">
-                <i className="fa-solid fa-shield-check absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                <i className="fa-solid fa-lock absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
                 <input
                   required
                   type="password"
-                  placeholder="Confirmar Senha"
+                  placeholder="Sua senha secreta"
                   className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
-                  value={formData.confirmPassword}
-                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                  value={formData.password}
+                  onChange={e => setFormData({...formData, password: e.target.value})}
                 />
+              </div>
+            </div>
+
+            {mode === 'register' && (
+              <div className="relative text-left">
+                <label className="text-[10px] text-gray-500 font-black uppercase ml-4 mb-1 block">Confirmar Senha</label>
+                <div className="relative">
+                  <i className="fa-solid fa-check-double absolute left-5 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                  <input
+                    required
+                    type="password"
+                    placeholder="Repita a senha"
+                    className="w-full bg-[#0d0e12] border-2 border-gray-800 rounded-2xl py-4 pl-14 pr-4 font-bold text-white focus:outline-none focus:border-yellow-500 transition-colors"
+                    value={formData.confirmPassword}
+                    onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                  />
+                </div>
               </div>
             )}
 
@@ -144,13 +160,13 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin, registrationBon
               type="submit"
               className="w-full py-5 bg-gradient-to-r from-yellow-500 to-amber-600 text-black font-black text-xl rounded-2xl shadow-xl hover:scale-[1.02] active:scale-95 transition-all uppercase italic tracking-tighter"
             >
-              {mode === 'register' ? 'CADASTRAR E GANHAR' : 'ENTRAR AGORA'}
+              {mode === 'register' ? 'CRIAR CONTA AGORA' : 'ENTRAR NO CASSINO'}
             </button>
           </form>
 
           <div className="mt-8 flex items-center justify-center gap-2">
             <span className="text-gray-500 text-sm font-bold">
-              {mode === 'register' ? 'Já tem uma conta?' : 'Ainda não tem conta?'}
+              {mode === 'register' ? 'Já tem uma conta?' : 'Novo por aqui?'}
             </span>
             <button 
               onClick={() => setMode(mode === 'register' ? 'login' : 'register')}
@@ -162,13 +178,8 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin, registrationBon
         </div>
 
         <div className="bg-black/40 p-6 text-center border-t border-gray-800">
-           <div className="flex items-center justify-center gap-6 opacity-40 grayscale filter">
-              <i className="fa-brands fa-pix text-2xl"></i>
-              <i className="fa-brands fa-apple-pay text-2xl"></i>
-              <i className="fa-brands fa-google-pay text-2xl"></i>
-           </div>
-           <p className="text-[10px] text-gray-600 font-bold mt-4 tracking-widest uppercase">
-              Certificado de Segurança SSL 256-bit
+           <p className="text-[9px] text-gray-600 font-black tracking-widest uppercase">
+              🔐 Seus dados estão protegidos por criptografia de ponta
            </p>
         </div>
       </div>
