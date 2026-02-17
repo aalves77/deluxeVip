@@ -36,6 +36,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [balanceAdjustment, setBalanceAdjustment] = useState(0);
   const [selectedUser, setSelectedUser] = useState<string>(allUsers[0]?.username || '');
   const [tempBonus, setTempBonus] = useState(registrationBonus);
+  const [userSearchTerm, setUserSearchTerm] = useState('');
   
   const [editingGameId, setEditingGameId] = useState<string | null>(null);
   const [tempImageUrl, setTempImageUrl] = useState('');
@@ -52,6 +53,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       adminCount: allUsers.filter(u => u.isAdmin).length
     };
   }, [allUsers]);
+
+  const filteredUsers = useMemo(() => {
+    if (!userSearchTerm) return allUsers;
+    const term = userSearchTerm.toLowerCase();
+    return allUsers.filter(u => 
+      u.username.toLowerCase().includes(term) || 
+      (u.phone && u.phone.includes(term))
+    );
+  }, [allUsers, userSearchTerm]);
 
   const toggleGameStatus = (id: string) => {
     const newGames = games.map(g => g.id === id ? { ...g, isActive: !g.isActive } : g);
@@ -70,6 +80,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setEditingGameId(null);
   };
 
+  const formatDate = (ts?: number) => {
+    if (!ts) return '--/--/----';
+    return new Date(ts).toLocaleDateString('pt-BR');
+  };
+
   return (
     <div className="p-4 md:p-8 animate-fadeIn max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -79,7 +94,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </div>
           <div>
             <h1 className="text-3xl font-black italic uppercase tracking-tighter">CENTRAL <span className="text-red-500">ADMIN</span></h1>
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Painel de Controle do Proprietário</p>
+            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Controle Total do Sistema</p>
           </div>
         </div>
 
@@ -163,49 +178,69 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
           {/* Tabela Detalhada de Usuários */}
           <div className="bg-[#1a1b23] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
-            <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-black/20">
-               <h3 className="font-black text-white italic uppercase tracking-tighter">LISTA DE TODOS OS CADASTRADOS</h3>
-               <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{allUsers.length} usuários salvos</span>
+            <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row justify-between items-center bg-black/20 gap-4">
+               <div className="flex flex-col">
+                  <h3 className="font-black text-white italic uppercase tracking-tighter">LISTA DE TODOS OS CADASTRADOS</h3>
+                  <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{allUsers.length} jogadores ativos</span>
+               </div>
+               <div className="relative w-full md:w-80">
+                  <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                  <input 
+                    type="text" 
+                    placeholder="Buscar por nome ou telefone..."
+                    value={userSearchTerm}
+                    onChange={(e) => setUserSearchTerm(e.target.value)}
+                    className="w-full bg-[#0d0e12] border border-gray-700 rounded-xl py-2.5 pl-11 pr-4 text-xs font-bold text-white focus:outline-none focus:border-red-500"
+                  />
+               </div>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-black/40 border-b border-gray-800">
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Jogador / ID</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Jogador</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest text-center">Cadastro</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Saldo Atual</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Total Depósitos</th>
                     <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest">Senha</th>
-                    <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest text-right">Ações</th>
+                    <th className="px-6 py-4 text-[10px] font-black uppercase text-gray-500 tracking-widest text-right">Privilégios</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800">
-                  {allUsers.map(u => (
-                    <tr key={u.username} className={`hover:bg-white/5 transition-colors ${u.username === currentUser.username ? 'bg-yellow-500/5' : ''}`}>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                           <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-lg ${u.isAdmin ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
-                             {u.username.charAt(0)}
-                           </div>
-                           <div className="flex flex-col">
-                             <span className="font-black text-sm uppercase text-white tracking-tighter">{u.username}</span>
-                             <span className="text-[9px] text-gray-600 font-bold">{u.phone || 'S/ Tel'} • VIP {u.vipLevel}</span>
-                           </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 font-mono font-black text-yellow-500">R$ {u.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                      <td className="px-6 py-4 font-mono text-xs text-gray-400">R$ {(u.totalDeposited || 0).toFixed(2)}</td>
-                      <td className="px-6 py-4 font-mono text-[10px] text-gray-600 uppercase">{u.password || '******'}</td>
-                      <td className="px-6 py-4 text-right">
-                        <button 
-                          onClick={() => onToggleAdmin(u.username)}
-                          disabled={u.username === 'admin'}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${u.isAdmin ? 'bg-zinc-800 text-gray-500 border-white/10' : 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'} disabled:opacity-20`}
-                        >
-                          {u.isAdmin ? 'Rebaixar' : 'Promover Admin'}
-                        </button>
-                      </td>
+                  {filteredUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center text-gray-600 font-bold uppercase tracking-widest">Nenhum jogador encontrado</td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredUsers.map(u => (
+                      <tr key={u.username} className={`hover:bg-white/5 transition-colors ${u.username === currentUser.username ? 'bg-yellow-500/5' : ''}`}>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                             <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs uppercase shadow-lg ${u.isAdmin ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'}`}>
+                               {u.username.charAt(0)}
+                             </div>
+                             <div className="flex flex-col">
+                               <span className="font-black text-sm uppercase text-white tracking-tighter">{u.username}</span>
+                               <span className="text-[9px] text-gray-600 font-bold uppercase">{u.phone || 'S/ Telefone'} • VIP {u.vipLevel}</span>
+                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                           <span className="text-[10px] font-mono text-gray-500">{formatDate(u.createdAt)}</span>
+                        </td>
+                        <td className="px-6 py-4 font-mono font-black text-yellow-500">R$ {u.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                        <td className="px-6 py-4 font-mono text-[10px] text-gray-600 uppercase tracking-widest">{u.password || '******'}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => onToggleAdmin(u.username)}
+                            disabled={u.username === 'aalves'}
+                            className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all border ${u.isAdmin ? 'bg-zinc-800 text-gray-500 border-white/10' : 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/20'} disabled:opacity-20`}
+                          >
+                            {u.isAdmin ? 'Remover Admin' : 'Tornar Admin'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>

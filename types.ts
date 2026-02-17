@@ -57,4 +57,5 @@ export interface User {
   claimedVipRewards: number[];
   profileImage?: string;
   tournamentScore: number; 
+  createdAt?: number; // Data de criação da conta
 }

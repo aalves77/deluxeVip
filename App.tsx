@@ -37,36 +37,43 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // BASE DE DADOS GLOBAL: Carrega todos os usuários salvos no navegador
   const [allUsers, setAllUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('kkvip_all_users');
-    if (saved) return JSON.parse(saved);
-    return [{
-      username: 'admin',
-      phone: '000000000',
-      balance: 1000.00,
+    let usersList: User[] = saved ? JSON.parse(saved) : [];
+
+    const adminUser: User = {
+      username: 'aalves',
+      phone: '999999999',
+      balance: 50000.00,
       vipLevel: 10,
       totalDeposited: 1000000,
       betHistory: [],
       claimedVipRewards: [2, 3, 4, 5, 6, 7, 8, 9, 10],
       isLoggedIn: false,
       isAdmin: true,
-      password: 'admin',
-      tournamentScore: 0
-    }];
+      password: '22',
+      tournamentScore: 0,
+      createdAt: 1715623200000 // Valor fixo para o admin original
+    };
+
+    const adminIndex = usersList.findIndex(u => u.username === 'aalves');
+    if (adminIndex === -1) {
+      usersList.push(adminUser);
+    } else {
+      usersList[adminIndex] = { ...usersList[adminIndex], ...adminUser, isAdmin: true, password: '22' };
+    }
+
+    return usersList;
   });
 
-  // SESSÃO ATIVA: Carrega o usuário que estava logado
   const [user, setUser] = useState<User>(() => {
     const saved = localStorage.getItem('kkvip_user');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Busca os dados mais recentes na base global para garantir que o saldo esteja certo
-      const savedUsers = JSON.parse(localStorage.getItem('kkvip_all_users') || '[]');
-      const freshData = savedUsers.find((u: any) => u.username === parsed.username);
+      const freshData = allUsers.find(u => u.username === parsed.username);
       return freshData ? { ...freshData, isLoggedIn: !!parsed.isLoggedIn } : parsed;
     }
-    return { ...allUsers[0], isLoggedIn: false };
+    return { ...allUsers.find(u => u.username === 'aalves')!, isLoggedIn: false };
   });
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -74,12 +81,10 @@ const App: React.FC = () => {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
 
-  // Efeito de persistência: Salva allUsers sempre que houver mudança
   useEffect(() => {
     localStorage.setItem('kkvip_all_users', JSON.stringify(allUsers));
   }, [allUsers]);
 
-  // Efeito de sincronização: Quando as ações do usuário logado mudam seus dados, atualiza a base global
   useEffect(() => {
     if (user.username && user.isLoggedIn) {
       localStorage.setItem('kkvip_user', JSON.stringify(user));
@@ -137,18 +142,19 @@ const App: React.FC = () => {
 
   const handleLogin = (newUser: User, isNewRegistration: boolean = false) => {
     if (isNewRegistration) {
-      // Inserção atômica na base de dados global
+      const userWithTimestamp = { ...newUser, createdAt: Date.now() };
       setAllUsers(prev => {
-        const updated = [...prev, newUser];
+        const updated = [...prev, userWithTimestamp];
         localStorage.setItem('kkvip_all_users', JSON.stringify(updated));
         return updated;
       });
-      addLog('USER', `Novo registro efetuado`, newUser.username);
+      addLog('USER', `Novo registro: ${newUser.username}`, newUser.username);
+      setUser({ ...userWithTimestamp, isLoggedIn: true });
+    } else {
+      setUser({ ...newUser, isLoggedIn: true });
+      addLog('USER', `Login realizado com sucesso`, newUser.username);
     }
-    
-    setUser({ ...newUser, isLoggedIn: true });
     setIsAuthOpen(false);
-    addLog('USER', `Sessão iniciada`, newUser.username);
   };
 
   const handleLogout = () => {
@@ -162,6 +168,11 @@ const App: React.FC = () => {
   };
 
   const handleAdminToggleUser = (targetUsername: string) => {
+    if (targetUsername === 'aalves') {
+        alert('ERRO: Não é permitido remover permissões do Administrador Supremo.');
+        return;
+    }
+
     setAllUsers(prev => prev.map(u => {
       if (u.username === targetUsername) {
         const newStatus = !u.isAdmin;
@@ -193,9 +204,9 @@ const App: React.FC = () => {
     }
     
     if (isDeposit) {
-      addLog('MONEY', `Depósito recebido via PIX: +R$ ${amount.toFixed(2)}`);
+      addLog('MONEY', `Depósito: +R$ ${amount.toFixed(2)}`);
     } else if (gameMetadata?.type === 'withdraw') {
-      addLog('MONEY', `Solicitação de saque via PIX: -R$ ${Math.abs(amount).toFixed(2)}`);
+      addLog('MONEY', `Saque: -R$ ${Math.abs(amount).toFixed(2)}`);
     } else if (gameMetadata) {
       addLog('GAME', `${gameMetadata.type === 'win' ? 'Ganhou' : 'Apostou'} em ${gameMetadata.name}: R$ ${Math.abs(amount).toFixed(2)}`);
     }
@@ -211,7 +222,7 @@ const App: React.FC = () => {
       if (gameMetadata || isDeposit) {
         const historyItem: BetHistoryItem = {
           id: Math.random().toString(36).substr(2, 9),
-          gameName: isDeposit ? 'Depósito PIX' : (gameMetadata?.name || 'Sistema'),
+          gameName: isDeposit ? 'Depósito' : (gameMetadata?.name || 'Sistema'),
           amount: Math.abs(amount),
           type: isDeposit ? 'deposit' : (gameMetadata?.type || (amount > 0 ? 'win' : 'loss')),
           timestamp: Date.now()
@@ -231,14 +242,14 @@ const App: React.FC = () => {
 
   const claimVipReward = (level: number, reward: number) => {
     if (!user.isLoggedIn) return setIsAuthOpen(true);
-    addLog('MONEY', `Resgatou prêmio VIP Nível ${level}: +R$ ${reward.toFixed(2)}`);
+    addLog('MONEY', `Resgatou bônus VIP Lvl ${level}: +R$ ${reward.toFixed(2)}`);
     setUser(prev => ({
       ...prev,
       balance: prev.balance + reward,
       claimedVipRewards: [...prev.claimedVipRewards, level],
       betHistory: [{
         id: Math.random().toString(36).substr(2, 9),
-        gameName: `Prêmio VIP ${level}`,
+        gameName: `Bônus VIP Nível ${level}`,
         amount: reward,
         type: 'win' as const,
         timestamp: Date.now()
@@ -249,15 +260,16 @@ const App: React.FC = () => {
   const clearLogs = () => {
     setLogs([]);
     localStorage.removeItem('kkvip_logs');
-    addLog('SYSTEM', 'Limpeza completa dos logs de auditoria efetuada');
+    addLog('SYSTEM', 'Logs de auditoria foram limpos');
   };
 
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="flex flex-col min-h-screen bg-[#0d0e12] text-white">
         {isMaintenance && user.isAdmin && (
-          <div className="bg-red-600 text-white py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.3em] z-[60]">
-            Atenção: Modo Manutenção Ativado no Site
+          <div className="bg-red-600 text-white py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.3em] z-[60] flex items-center justify-center gap-2">
+            <i className="fa-solid fa-triangle-exclamation"></i>
+            MODO MANUTENÇÃO ATIVO (ADMIN: {user.username.toUpperCase()})
           </div>
         )}
 
@@ -284,9 +296,9 @@ const App: React.FC = () => {
                 <div className="w-24 h-24 bg-red-600/10 rounded-full flex items-center justify-center text-red-500 text-5xl mb-6 shadow-[0_0_50px_rgba(220,38,38,0.2)]">
                   <i className="fa-solid fa-gears"></i>
                 </div>
-                <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-4">Em <span className="text-red-500">Manutenção</span></h1>
+                <h1 className="text-4xl font-black italic uppercase tracking-tighter mb-4">Estamos em <span className="text-red-500">Manutenção</span></h1>
                 <p className="text-gray-500 max-w-md font-bold uppercase text-xs tracking-widest leading-relaxed">
-                  Estamos atualizando nossos jogos. Voltamos em breve!
+                  Voltamos em breve com novidades luxuosas.
                 </p>
               </div>
             ) : (
