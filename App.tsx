@@ -37,11 +37,9 @@ const App: React.FC = () => {
     return saved ? JSON.parse(saved) : [];
   });
 
-  // Lista global de usuários registrados para o admin gerenciar
   const [allUsers, setAllUsers] = useState<User[]>(() => {
     const saved = localStorage.getItem('kkvip_all_users');
     if (saved) return JSON.parse(saved);
-    // Usuário padrão solicitado (Admin Master)
     return [{
       username: 'aalves',
       phone: '342343',
@@ -99,7 +97,7 @@ const App: React.FC = () => {
       user: username || user.username
     };
     setLogs(prev => {
-      const updated = [newLog, ...prev].slice(0, 500); // Aumentado limite de logs para 500
+      const updated = [newLog, ...prev].slice(0, 500);
       localStorage.setItem('kkvip_logs', JSON.stringify(updated));
       return updated;
     });
@@ -254,7 +252,7 @@ const App: React.FC = () => {
   };
 
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <div className="flex flex-col min-h-screen bg-[#0d0e12] text-white">
         {isMaintenance && user.isAdmin && (
           <div className="bg-red-600 text-white py-1 px-4 text-center text-[10px] font-black uppercase tracking-[0.3em] z-[60]">
