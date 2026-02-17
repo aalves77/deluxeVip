@@ -16,6 +16,7 @@ interface AdminPanelProps {
   allUsers: User[];
   onToggleAdmin: (username: string) => void;
   onAdminUpdateBalance: (username: string, amount: number) => void;
+  onAdminAddUsers: (users: User[]) => void;
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
@@ -30,9 +31,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   onClearLogs,
   allUsers,
   onToggleAdmin,
-  onAdminUpdateBalance
+  onAdminUpdateBalance,
+  onAdminAddUsers
 }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'games' | 'users' | 'config' | 'logs'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'games' | 'users' | 'config' | 'logs' | 'server'>('dashboard');
   const [balanceAdjustment, setBalanceAdjustment] = useState(0);
   const [selectedUser, setSelectedUser] = useState<string>(allUsers[0]?.username || '');
   const [tempBonus, setTempBonus] = useState(registrationBonus);
@@ -85,6 +87,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     return new Date(ts).toLocaleDateString('pt-BR');
   };
 
+  const generateTestUsers = () => {
+    const testNames = ['bruno_lucky', 'maria_slots', 'carlos_pro', 'bet_master', 'jackpot_ninja'];
+    const newUsers: User[] = testNames.map(name => ({
+        username: name + '_' + Math.floor(Math.random() * 99),
+        phone: '119' + Math.floor(10000000 + Math.random() * 90000000),
+        balance: Math.floor(Math.random() * 500),
+        vipLevel: Math.floor(Math.random() * 5) + 1,
+        totalDeposited: Math.floor(Math.random() * 1000),
+        betHistory: [],
+        claimedVipRewards: [],
+        isLoggedIn: false,
+        isAdmin: false,
+        password: '123',
+        tournamentScore: Math.floor(Math.random() * 5000),
+        createdAt: Date.now() - (Math.random() * 1000000000)
+    }));
+    onAdminAddUsers(newUsers);
+    alert('5 usuários de teste foram gerados com sucesso!');
+  };
+
   return (
     <div className="p-4 md:p-8 animate-fadeIn max-w-7xl mx-auto space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-center gap-6">
@@ -99,80 +121,161 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
 
         <div className="flex bg-[#1a1b23] p-1 rounded-2xl border border-gray-800 overflow-x-auto no-scrollbar">
-          {['dashboard', 'games', 'users', 'config', 'logs'].map((tab) => (
+          {['dashboard', 'games', 'users', 'config', 'logs', 'server'].map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab as any)}
               className={`px-6 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab ? 'bg-red-600 text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
             >
-              {tab === 'config' ? 'Ajustes' : tab === 'games' ? 'Jogos' : tab === 'users' ? 'Usuários' : tab === 'logs' ? 'Auditoria' : 'Dashboard'}
+              {tab === 'config' ? 'Ajustes' : tab === 'games' ? 'Jogos' : tab === 'users' ? 'Usuários' : tab === 'logs' ? 'Auditoria' : tab === 'server' ? 'Servidor' : 'Dashboard'}
             </button>
           ))}
         </div>
       </div>
 
       {activeTab === 'dashboard' && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 animate-slideUp">
-          <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Lucro Estimado</p>
-            <p className={`text-3xl font-black ${stats.houseProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-              R$ {stats.houseProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
+        <div className="space-y-6 animate-slideUp">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Lucro Estimado</p>
+              <p className={`text-3xl font-black ${stats.houseProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                R$ {stats.houseProfit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Contas Registradas</p>
+              <p className="text-3xl font-black text-blue-500">{stats.userCount}</p>
+            </div>
+            <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Total em Depósitos</p>
+              <p className="text-3xl font-black text-purple-500">R$ {stats.totalDeposits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+            </div>
+            <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
+              <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Estado do Sistema</p>
+              <p className={`text-2xl font-black ${isMaintenance ? 'text-red-500' : 'text-green-500'}`}>{isMaintenance ? 'MANUTENÇÃO' : 'OPERACIONAL'}</p>
+            </div>
           </div>
-          <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Contas Registradas</p>
-            <p className="text-3xl font-black text-blue-500">{stats.userCount}</p>
+
+          <div className="bg-blue-600/10 border border-blue-500/20 p-6 rounded-[2rem] flex items-center gap-6">
+             <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl flex-shrink-0">
+                <i className="fa-solid fa-circle-info"></i>
+             </div>
+             <div>
+                <h4 className="font-black text-blue-400 uppercase text-xs mb-1">Dica Profissional: Veja outros usuários</h4>
+                <p className="text-xs text-gray-400 font-bold leading-relaxed">
+                   Atualmente, por ser um protótipo, o banco de dados é **LOCAL** (salvo no navegador). Se você quer ver pessoas reais se cadastrando de outros aparelhos, visite a aba **"SERVIDOR"** para entender como conectar o site a um banco de dados global (Backend).
+                </p>
+             </div>
           </div>
-          <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Total em Depósitos</p>
-            <p className="text-3xl font-black text-purple-500">R$ {stats.totalDeposits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-          </div>
-          <div className="bg-[#1a1b23] border border-gray-800 p-6 rounded-[2rem] space-y-2">
-            <p className="text-gray-500 text-[10px] font-black uppercase tracking-widest">Estado do Sistema</p>
-            <p className={`text-2xl font-black ${isMaintenance ? 'text-red-500' : 'text-green-500'}`}>{isMaintenance ? 'MANUTENÇÃO' : 'OPERACIONAL'}</p>
-          </div>
+        </div>
+      )}
+
+      {activeTab === 'server' && (
+        <div className="animate-fadeIn space-y-8 max-w-4xl">
+            <div className="bg-[#1a1b23] border border-gray-800 rounded-[2.5rem] p-8 space-y-6 shadow-2xl">
+                <h2 className="text-3xl font-black italic uppercase tracking-tighter text-yellow-500 flex items-center gap-4">
+                    <i className="fa-solid fa-cloud-arrow-up"></i> TORNE O SITE REAL
+                </h2>
+                <p className="text-gray-400 font-bold leading-relaxed">
+                    Para que outras pessoas possam se cadastrar e você consiga monitorá-las da sua casa, este cassino precisa sair do "Modo de Demonstração" e ser conectado a um **Servidor Central**.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-black/30 p-6 rounded-3xl border border-white/5 space-y-4">
+                        <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center shadow-lg">
+                           <i className="fa-solid fa-database text-white"></i>
+                        </div>
+                        <h4 className="font-black uppercase text-sm">1. Banco de Dados</h4>
+                        <p className="text-xs text-gray-500 font-bold uppercase">Requisito: Firebase Firestore ou Supabase</p>
+                        <p className="text-[10px] text-gray-600 leading-tight">Isto armazenará as contas e saldos de todos os jogadores mundialmente em um único lugar.</p>
+                    </div>
+
+                    <div className="bg-black/30 p-6 rounded-3xl border border-white/5 space-y-4">
+                        <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                           <i className="fa-solid fa-globe text-white"></i>
+                        </div>
+                        <h4 className="font-black uppercase text-sm">2. Hospedagem (Link)</h4>
+                        <p className="text-xs text-gray-500 font-bold uppercase">Requisito: Vercel ou Netlify</p>
+                        <p className="text-[10px] text-gray-600 leading-tight">Ao publicar seu site na Vercel, você terá um link (ex: meucassino.com) que qualquer pessoa pode acessar.</p>
+                    </div>
+                </div>
+
+                <div className="bg-yellow-500/10 border border-yellow-500/20 p-6 rounded-3xl">
+                    <h4 className="font-black text-yellow-500 uppercase text-xs mb-2">Resumo Técnico para o Programador:</h4>
+                    <pre className="text-[9px] font-mono text-gray-400 overflow-x-auto p-4 bg-black/40 rounded-xl">
+{`// Substituir em App.tsx:
+const [allUsers, setAllUsers] = useState([]);
+
+// Pelo hook de conexão:
+useEffect(() => {
+  const db = getFirestore();
+  onSnapshot(collection(db, "users"), (snapshot) => {
+    const list = snapshot.docs.map(doc => doc.data());
+    setAllUsers(list);
+  });
+}, []);`}
+                    </pre>
+                </div>
+            </div>
         </div>
       )}
 
       {activeTab === 'users' && (
         <div className="space-y-8 animate-fadeIn">
-          {/* Ajuste de Saldo */}
-          <div className="bg-[#1a1b23] border border-gray-800 rounded-[2.5rem] p-8 space-y-6 shadow-2xl">
-            <h3 className="font-black italic uppercase text-red-500 text-xl flex items-center gap-3">
-               <i className="fa-solid fa-money-bill-transfer"></i> Ajuste Financeiro Rápido
-            </h3>
-            <div className="flex flex-col md:flex-row gap-6">
-              <div className="flex-1 space-y-2">
-                <label className="text-[10px] text-gray-500 font-black uppercase px-2">Escolha o Jogador</label>
-                <select 
-                  value={selectedUser}
-                  onChange={(e) => setSelectedUser(e.target.value)}
-                  className="w-full bg-[#0d0e12] border-2 border-gray-700 p-4 rounded-2xl font-black text-white outline-none focus:border-red-500 appearance-none"
-                >
-                  {allUsers.map(u => (
-                    <option key={u.username} value={u.username}>
-                      {u.username.toUpperCase()} (BRL {u.balance.toFixed(2)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex-1 space-y-2">
-                <label className="text-[10px] text-gray-500 font-black uppercase px-2">Valor (+ ou -)</label>
-                <div className="flex gap-3">
-                  <input 
-                    type="number" 
-                    value={balanceAdjustment}
-                    onChange={(e) => setBalanceAdjustment(Number(e.target.value))}
-                    className="bg-[#0d0e12] border-2 border-gray-700 p-4 rounded-2xl w-full text-white font-black"
-                  />
-                  <button 
-                    onClick={() => { onAdminUpdateBalance(selectedUser, balanceAdjustment); setBalanceAdjustment(0); }}
-                    className="bg-red-600 hover:bg-red-500 px-8 rounded-2xl font-black uppercase text-xs transition-all active:scale-95 text-white"
-                  >
-                    APLICAR
-                  </button>
+          {/* Ajuste de Saldo e Simulação */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-[#1a1b23] border border-gray-800 rounded-[2.5rem] p-8 space-y-6 shadow-2xl">
+                <h3 className="font-black italic uppercase text-red-500 text-xl flex items-center gap-3">
+                <i className="fa-solid fa-money-bill-transfer"></i> Ajuste Financeiro Rápido
+                </h3>
+                <div className="flex flex-col md:flex-row gap-6">
+                <div className="flex-1 space-y-2">
+                    <label className="text-[10px] text-gray-500 font-black uppercase px-2">Escolha o Jogador</label>
+                    <select 
+                    value={selectedUser}
+                    onChange={(e) => setSelectedUser(e.target.value)}
+                    className="w-full bg-[#0d0e12] border-2 border-gray-700 p-4 rounded-2xl font-black text-white outline-none focus:border-red-500 appearance-none"
+                    >
+                    {allUsers.map(u => (
+                        <option key={u.username} value={u.username}>
+                        {u.username.toUpperCase()} (BRL {u.balance.toFixed(2)})
+                        </option>
+                    ))}
+                    </select>
                 </div>
-              </div>
+                <div className="flex-1 space-y-2">
+                    <label className="text-[10px] text-gray-500 font-black uppercase px-2">Valor (+ ou -)</label>
+                    <div className="flex gap-3">
+                    <input 
+                        type="number" 
+                        value={balanceAdjustment}
+                        onChange={(e) => setBalanceAdjustment(Number(e.target.value))}
+                        className="bg-[#0d0e12] border-2 border-gray-700 p-4 rounded-2xl w-full text-white font-black"
+                    />
+                    <button 
+                        onClick={() => { onAdminUpdateBalance(selectedUser, balanceAdjustment); setBalanceAdjustment(0); }}
+                        className="bg-red-600 hover:bg-red-500 px-8 rounded-2xl font-black uppercase text-xs transition-all active:scale-95 text-white"
+                    >
+                        APLICAR
+                    </button>
+                    </div>
+                </div>
+                </div>
+            </div>
+
+            <div className="bg-[#1a1b23] border border-gray-800 rounded-[2.5rem] p-8 space-y-6 shadow-2xl flex flex-col justify-center">
+                <h3 className="font-black italic uppercase text-blue-500 text-xl flex items-center gap-3">
+                   <i className="fa-solid fa-users-rays"></i> Simular Atividade Global
+                </h3>
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-wider">
+                   Gere cadastros de teste para ver como a plataforma se comporta com múltiplos jogadores.
+                </p>
+                <button 
+                    onClick={generateTestUsers}
+                    className="bg-blue-600 hover:bg-blue-500 text-white font-black py-4 rounded-2xl shadow-xl transition-all active:scale-95 uppercase italic"
+                >
+                    <i className="fa-solid fa-user-plus mr-2"></i> Gerar 5 Usuários de Teste
+                </button>
             </div>
           </div>
 
@@ -180,8 +283,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <div className="bg-[#1a1b23] border border-gray-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row justify-between items-center bg-black/20 gap-4">
                <div className="flex flex-col">
-                  <h3 className="font-black text-white italic uppercase tracking-tighter">LISTA DE TODOS OS CADASTRADOS</h3>
-                  <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{allUsers.length} jogadores ativos</span>
+                  <h3 className="font-black text-white italic uppercase tracking-tighter">LISTA DE JOGADORES NO NAVEGADOR</h3>
+                  <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{allUsers.length} jogadores salvos localmente</span>
                </div>
                <div className="relative w-full md:w-80">
                   <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>

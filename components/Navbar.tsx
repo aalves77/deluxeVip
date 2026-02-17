@@ -5,12 +5,13 @@ import { User } from '../types';
 
 interface NavbarProps {
   user: User;
+  onlineCount: number;
   onMenuClick: () => void;
   onDepositClick: () => void;
   onAuthClick: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ user, onMenuClick, onDepositClick, onAuthClick }) => {
+const Navbar: React.FC<NavbarProps> = ({ user, onlineCount, onMenuClick, onDepositClick, onAuthClick }) => {
   const navigate = useNavigate();
 
   return (
@@ -26,9 +27,15 @@ const Navbar: React.FC<NavbarProps> = ({ user, onMenuClick, onDepositClick, onAu
           <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-lg flex items-center justify-center shadow-inner">
             <span className="text-black font-black text-xl italic">D</span>
           </div>
-          <span className="text-white font-bold text-xl tracking-tighter hidden sm:block">
-            Deluxe<span className="text-yellow-500">Vip</span>
-          </span>
+          <div className="flex flex-col leading-none hidden sm:flex">
+            <span className="text-white font-bold text-xl tracking-tighter">
+                Deluxe<span className="text-yellow-500">Vip</span>
+            </span>
+            <div className="flex items-center gap-1 mt-0.5">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                <span className="text-[8px] font-black text-gray-500 uppercase tracking-widest">{onlineCount.toLocaleString()} ONLINE</span>
+            </div>
+          </div>
         </div>
       </div>
 

@@ -32,6 +32,8 @@ const App: React.FC = () => {
     return Number(localStorage.getItem('kkvip_reg_bonus')) || 10.00;
   });
 
+  const [onlinePlayers, setOnlinePlayers] = useState(1240);
+
   const [logs, setLogs] = useState<LogItem[]>(() => {
     const saved = localStorage.getItem('kkvip_logs');
     return saved ? JSON.parse(saved) : [];
@@ -53,7 +55,7 @@ const App: React.FC = () => {
       isAdmin: true,
       password: '22',
       tournamentScore: 0,
-      createdAt: 1715623200000 // Valor fixo para o admin original
+      createdAt: 1715623200000 
     };
 
     const adminIndex = usersList.findIndex(u => u.username === 'aalves');
@@ -80,6 +82,17 @@ const App: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+
+  // Simulação de Tráfego Online (Oscilação Realista)
+  useEffect(() => {
+    const interval = setInterval(() => {
+        setOnlinePlayers(prev => {
+            const change = Math.floor(Math.random() * 20) - 10;
+            return Math.max(1100, prev + change);
+        });
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('kkvip_all_users', JSON.stringify(allUsers));
@@ -196,6 +209,15 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleAdminAddUsers = (newUsers: User[]) => {
+    setAllUsers(prev => {
+        const updated = [...prev, ...newUsers];
+        localStorage.setItem('kkvip_all_users', JSON.stringify(updated));
+        return updated;
+    });
+    addLog('ADMIN', `Gerou ${newUsers.length} usuários de teste`);
+  };
+
   const updateBalance = (amount: number, isDeposit: boolean = false, gameMetadata?: { name: string, type: 'win' | 'loss' | 'withdraw', category?: string }) => {
     if (isMaintenance && !user.isAdmin) return;
     if (!user.isLoggedIn) {
@@ -275,6 +297,7 @@ const App: React.FC = () => {
 
         <Navbar 
           user={user} 
+          onlineCount={onlinePlayers}
           onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} 
           onDepositClick={() => setIsDepositOpen(true)}
           onAuthClick={() => setIsAuthOpen(true)}
@@ -326,6 +349,7 @@ const App: React.FC = () => {
                       allUsers={allUsers}
                       onToggleAdmin={handleAdminToggleUser}
                       onAdminUpdateBalance={handleAdminUpdateBalance}
+                      onAdminAddUsers={handleAdminAddUsers}
                     />
                   ) : <Navigate to="/" />} 
                 />
